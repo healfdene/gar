@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# This script will be executed *after* all the other init scripts.
+# You can put your own initialization stuff in here if you don't
+# want to do the full Sys V style init stuff.
+
+touch /var/lock/subsys/local
+
+exec 2> /var/log/rc.local.log # send stderr from rc.local to a log file
+exec 1>&2                     # send stdout to the same log file
+
+echo Retrieving AWS region...
+AWS_REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')
+aws configure set default.region $AWS_REGION
+
+echo Retrieving instance information...
+AWS_INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+AWS_INSTANCE_NAME=$(aws ec2 describe-tags --filter "Name=resource-id,Values=$AWS_INSTANCE_ID" --output=text | egrep "^TAGS\s+Name" | sed -r 's/TAGS\t(.*)\t.*\t.*\t(.*)/\2/')
+
+# Start Papertrail
+/opt/papertrail/remote_syslog/remote_syslog --hostname=${AWS_INSTANCE_NAME}
+
+# Start New Relic
+echo hostname=${AWS_INSTANCE_NAME} >> /etc/newrelic/nrsysmond.cfg
+echo >> /etc/newrelic/nrsysmond.cfg
+/etc/init.d/newrelic-sysmond start
+
+echo Starting bootstrap...
+runuser -l ec2-user -c '{ cd /opt/gar; ./bootstrap.sh; } &> /var/log/gar/gar.log'

@@ -1,0 +1,12 @@
+destination:
+  host: logs2.papertrailapp.com
+  port: 99999
+  protocol: tls
+files:
+  - /var/log/cloud-init.log
+  - /var/log/cloud-init-output.log
+  - /var/log/rc.local.log
+  - /var/log/newrelic/*.log
+  - /var/log/gar/bootstrap.log
+  - /var/log/gar/*.log
+  - /var/log/gar/*/*.log
